@@ -96,7 +96,7 @@ export class CallsystemStd {
 		return !commentCase && (mentionCase || ((whitelistCase || blacklistCase) && !silentModeCase));
 	}
 
-	responseTransform({ content, files }) {
+	responseTransform({ content = "", files = [] }) {
 		if (!content)
 			return {
 				content: "",

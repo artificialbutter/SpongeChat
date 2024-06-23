@@ -10,12 +10,21 @@ export class HistoryManager {
 	 * @param {object} options
 	 *
 	 */
-	constructor({ kv, instructionSet, baseHistory = [], model, contextWindow = 5, recordTemplate, variables }) {
+	constructor({
+		kv,
+		instructionSet,
+		baseHistory = [],
+		model,
+		contextWindow = 5,
+		recordTemplate,
+		variables,
+		keyPrefix: prefix,
+	}) {
 		this.kv = kv;
 		this.options = {
 			contextWindow: contextWindow || 5,
 			instructionSet,
-			prefix: "std.history",
+			prefix: prefix || "std.history",
 			template: recordTemplate || "%RESPONSE%",
 			variables: variables || {},
 		};
@@ -56,29 +65,31 @@ export class HistoryManager {
 	 * @param {string} content
 	 * @returns {string} The transformed content
 	 */
-	transformContent(content) {
-		const template = this.options.template || "%RESPONSE%";
-
+	transformContent(content, role, variables, templateOverride) {
+		const template = templateOverride || this.options.template || "%RESPONSE%";
+		const vars = { ...(this.options.variables || {}), ...variables };
 		if (typeof content !== "string") return content;
 
-		const randomisedVars = Object.keys(this.options.variables).map((key) => {
+		if (role !== "user") return content;
+
+		const randomisedVars = Object.keys(vars).map((key) => {
 			const randomId = nanoid();
 			return {
 				id: `{_${randomId}}`,
 				trueId: key,
-				value: this.options.variables[key],
+				value: vars[key],
 			};
 		});
 
 		// replace all variable expressions with randomised ID expressions
-		const sanitisedTemplate = Object.keys(this.options.variables).reduce((acc, key) => {
+		const sanitisedTemplate = Object.keys(vars).reduce((acc, key) => {
 			const variable = randomisedVars.find((v) => v.trueId === key);
 			return acc.replaceAll(key, variable.id);
 		}, template || "%RESPONSE%");
 
 		// replace all sanitised variable sequences in the content with their values
 		// %RESPONSE% and {RESPONSE} are special variables that are replaced with the response. these are not included here for safety
-		const loadedTemplate = Object.keys(this.options.variables).reduce((acc, key) => {
+		const loadedTemplate = Object.keys(vars).reduce((acc, key) => {
 			const variable = randomisedVars.find((v) => v.trueId === key);
 			return acc.replaceAll(variable.id, variable.value);
 		}, sanitisedTemplate);
@@ -139,14 +150,20 @@ export class HistoryManager {
 	 * @param {boolean} returnEverything Whether to return the entire history after adding the record. Will only be triggered on `returnEverything = true`.
 	 * @returns {Promise<object[]>} The history after adding the record
 	 */
-	async add(key, { contextId, role, content, context }, returnEverything = false, includeBase = true) {
+	async add(
+		key,
+		{ contextId, role, content, context },
+		returnEverything = false,
+		includeBase = true,
+		{ variables = {}, template = this.options.template || "%RESPONSE%" } = {},
+	) {
 		const runOperation = async () => {
 			return await this.kv.lPush(
 				this.prefixKey(key),
 				JSON.stringify({
 					contextId,
 					role,
-					content: this.transformContent(content),
+					content: this.transformContent(content, role, variables, template),
 					context: this.transformContext(context),
 				}),
 			);
@@ -156,15 +173,21 @@ export class HistoryManager {
 		await runOperation();
 		return [
 			...base,
-			{ contextId, role, content: this.transformContent(content), context: this.transformContext(context) },
+			{ contextId, role, content: this.transformContent(content, variables), context: this.transformContext(context) },
 		];
 	}
 
-	async addMany(key, messages = [], returnEverything = false, includeBase = true) {
+	async addMany(
+		key,
+		messages = [],
+		returnEverything = false,
+		includeBase = true,
+		{ variables = {}, template = this.options.template || "%RESPONSE%" } = {},
+	) {
 		const sequenceId = nanoid();
 		const mappedMsgs = messages.map((m) => ({
 			...m,
-			content: this.transformContent(m.content),
+			content: this.transformContent(m.content, m.role, variables, template),
 			context: { ...this.transformContext(m.context), sequence: messages.indexOf(m), sequenceId },
 		}));
 		const runOperation = async () => {

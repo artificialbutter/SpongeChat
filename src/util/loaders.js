@@ -3,6 +3,7 @@ import { URL } from "node:url";
 import { predicate as commandPredicate } from "../commands/index.js";
 import { predicate as eventPredicate } from "../events/index.js";
 import { predicate as callsystemPredicate } from "../lib/callsystems/index.js";
+import { predicate as integrationPredicate } from "../callsystems/spongedsc/integrations/lib/class.js";
 import { basename } from "node:path";
 
 /**
@@ -118,4 +119,31 @@ export async function loadCallsystems(dir, recursive = true, allowIndex = true) 
 	}, structMap);
 
 	return callsystemsLatest;
+}
+
+/**
+ * @param {import('node:fs').PathLike} dir
+ * @param {boolean} [recursive]
+ * @returns {Promise<Map<string,import('../callsystems/spongedsc/integrations/lib/class.js').Integration[]>>}
+ */
+export async function loadIntegrations(dir, recursive = true, allowIndex = true) {
+	const structs = await loadStructures(dir, integrationPredicate, recursive, allowIndex);
+	const structMap = structs.reduce((acc, cur) => acc.set(cur.packageId + "-" + cur.version, cur), new Map());
+
+	// find all unique integration ids in the structMap using structs, then return the latest version of each integration
+	const integrationsLatest = [...structMap.values()].reduce((acc, cur) => {
+		const integrationKey = cur.packageId + "-latest";
+		if (!acc.has(integrationKey)) {
+			acc.set(integrationKey, cur);
+		} else {
+			const accClass = acc.get(integrationKey);
+			const curClass = cur;
+			const latestVersion =
+				(accClass.releaseDate || new Date()) > (curClass.releaseDate || new Date()) ? acc.get(integrationKey) : cur;
+			acc.set(integrationKey, latestVersion);
+		}
+		return acc;
+	}, structMap);
+
+	return integrationsLatest;
 }

@@ -23,10 +23,12 @@ export default {
 		try {
 			const { log, length } = await modelInteractions.history
 				.formatLog({
-					key: interaction?.channel?.id,
+					key: "unified-" + interaction?.channel?.id,
 					filter: (im) =>
 						im?.context?.respondingTo === interaction.targetMessage?.id ||
-						im?.context?.respondingTo === interaction?.targetMessage?.reference?.messageId,
+						im?.context?.respondingTo === interaction?.targetMessage?.reference?.messageId ||
+						im?.contextId === interaction.targetMessage?.id ||
+						im?.contextId === interaction?.targetMessage?.reference?.messageId,
 				})
 				.then((returns) => ({
 					...returns,

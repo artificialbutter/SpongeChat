@@ -24,7 +24,7 @@ export default {
 
 		const { log, length } = await modelInteractions.history
 			.formatLog({
-				key: interaction?.channel?.id,
+				key: "unified-" + interaction?.channel?.id,
 			})
 			.then((returns) => ({
 				...returns,
@@ -36,7 +36,7 @@ export default {
 		const noun = cardinalRules.select(length) === "one" ? "memory" : "memories";
 
 		const operation = await client.kv
-			.del(interaction?.channel.id)
+			.del("unified-" + interaction?.channel.id)
 			.then(() => true)
 			.catch(() => false);
 

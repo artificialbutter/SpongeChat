@@ -44,7 +44,7 @@ export default class Legacy extends Callsystem {
 
 		const history = await modelInteractions.history
 			.add({
-				key: message?.channel?.id,
+				key: "unified-" + message?.channel?.id,
 				role: "user",
 				content:
 					formattedMessage +
@@ -59,17 +59,17 @@ export default class Legacy extends Callsystem {
 			history,
 		});
 
-		if (callResponse.length === 0 || callResponse === "") return await message.react("⚠️").catch(() => false);
+		if (callResponse?.length === 0 || callResponse === "") return await message.react("⚠️").catch(() => false);
 
 		const { responseMsg, events } = await modelInteractions.messageEvent.createResponse({
 			textResponse,
 			conditions: {
 				amnesia: !validityCheck?.valid && validityCheck?.handled?.isRequired && validityCheck?.handled?.executed,
-				imagine: callResponse.includes("!gen"),
+				imagine: callResponse?.includes("!gen"),
 			},
 		});
 
-		if (responseMsg && callResponse.includes("!gen"))
+		if (responseMsg && callResponse?.includes("!gen"))
 			return await modelInteractions.messageEvent.handleImageModelCall({ genData, textResponse, responseMsg, events });
 	}
 }

@@ -2,7 +2,7 @@ import process from "node:process";
 import { URL } from "node:url";
 import { Client, GatewayIntentBits } from "discord.js";
 import { cmdRollout } from "./util/deploy/lib.js";
-import { loadCallsystems, loadCommands, loadEvents } from "./util/loaders.js";
+import { loadCallsystems, loadCommands, loadEvents, loadIntegrations } from "./util/loaders.js";
 import { registerEvents } from "./util/registerEvents.js";
 import chalk from "chalk";
 
@@ -29,9 +29,10 @@ const events = await loadEvents(new URL("events/", import.meta.url));
 const commands = await loadCommands(new URL("commands/", import.meta.url));
 const actions = await loadCommands(new URL("actions/", import.meta.url));
 const callsystems = await loadCallsystems(new URL("callsystems/", import.meta.url));
+const integrations = await loadIntegrations(new URL("integrations/", import.meta.url));
 
 // Register the event handlers
-registerEvents(commands, actions, callsystems, events, client);
+registerEvents(commands, actions, callsystems, integrations, events, client);
 
 // Login to the client
 void client.login(process.env.DISCORD_TOKEN);
